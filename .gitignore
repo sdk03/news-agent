@@ -2,6 +2,12 @@
 node_modules/
 node_modules
 
+# Flutter
+# agent-flutter/
+# agent-flutter
+# flutter/
+# flutter
+
 # Flutter/Dart
 .dart_tool/
 .flutter-plugins

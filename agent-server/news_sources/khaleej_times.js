@@ -128,69 +128,46 @@ class KhaleejTimesScraper {
             const $ = cheerio.load(response.data);
             const headlines = [];
             
-            // Get the main top news first
-            const mainTopNews = $('div.main-top-teaser-content');
-            if (mainTopNews.length) {
-                const mainHeadline = mainTopNews.find('h1');
-                if (mainHeadline.length) {
-                    const headlineLink = mainHeadline.find('a');
+            // Find the main news section
+            const mainSection = $('div.row.align-items-stretch');
+            
+            // Get headlines from the main section
+            mainSection.find('div.rendered_board_article').each((i, article) => {
+                try {
+                    // Skip if it's in partner content section
+                    if ($(article).closest('div.partner-content').length > 0) {
+                        return;
+                    }
+
+                    const headlineLink = $(article).find('h4 a');
                     if (headlineLink.length) {
+                        const url = headlineLink.attr('href');
+                        
+                        // Skip video URLs
+                        if (url && url.includes('/videos/')) {
+                            return;
+                        }
+                        
                         const headline = {
                             title: headlineLink.attr('title')?.trim() || '',
-                            url: this.ensureAbsoluteUrl(headlineLink.attr('href')),
-                            is_main: true
+                            url: this.ensureAbsoluteUrl(url),
+                            is_main: false
                         };
+                        
+                        // Check if it's a live article
+                        const isLive = $(article).find('span.pulse1').length > 0;
+                        if (isLive) {
+                            headline.is_live = true;
+                        }
                         
                         if (headline.title && headline.url) {
                             headlines.push(headline);
-                            
-                            // Get the subtitle/description if available
-                            const subtitle = mainTopNews.find('p');
-                            if (subtitle.length) {
-                                const subtitleLink = subtitle.find('a');
-                                if (subtitleLink.length) {
-                                    const subtitleText = subtitleLink.text().trim();
-                                    if (subtitleText) {
-                                        headlines[0].subtitle = subtitleText;
-                                    }
-                                }
-                            }
                         }
                     }
-                }
-            }
-            
-            // Find all article containers
-            const articleContainers = $('div.rendered_board_article');
-            
-            articleContainers.each((i, container) => {
-                // Skip if it's in the popular section
-                if ($(container).closest('div.most-popuplar-ongoing-viral-outer').length) {
-                    return;
-                }
-                
-                // Find the headline link
-                const headlineLink = $(container).find('a[title]');
-                if (headlineLink.length) {
-                    const headline = {
-                        title: headlineLink.attr('title')?.trim() || '',
-                        url: this.ensureAbsoluteUrl(headlineLink.attr('href')),
-                        is_main: false
-                    };
-                    
-                    if (headline.title && headline.url) {
-                        headlines.push(headline);
-                    }
+                } catch (error) {
+                    console.error(`Error parsing headline: ${error.message}`);
                 }
             });
-            
-            // Get card articles
-            const cardArticles = await this.getCardArticles($);
-            headlines.push(...cardArticles);
-            
-            // Get timeline events
-            const timelineEvents = await this.getTimelineEvents($);
-            headlines.push(...timelineEvents);
             
             return headlines;
             
@@ -203,11 +180,7 @@ class KhaleejTimesScraper {
     async getHeadline() {
         const headlines = await this.getHeadlines();
         if (headlines.length > 0) {
-            const mainHeadline = headlines[0];
-            if (mainHeadline.subtitle) {
-                return `${mainHeadline.title} - ${mainHeadline.subtitle}`;
-            }
-            return mainHeadline.title;
+            return headlines[0].title;
         }
         return "No headlines found";
     }
