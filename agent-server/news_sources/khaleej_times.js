@@ -195,18 +195,30 @@ class KhaleejTimesScraper {
             // Get article title
             const title = $('h1.article-title').text().trim() || "No title found";
             
-            // Get article content
-            const contentDiv = $('div.article-center-wrap-nf');
-            const paragraphs = [];
+            // Check for live blog summary first
+            const liveBlogSummary = $('div.liveBlog-summary');
+            let paragraphs = [];
             
-            if (contentDiv.length) {
-                // Find all paragraph elements
-                contentDiv.find('p').each((i, p) => {
-                    const text = $(p).text().trim();
+            if (liveBlogSummary.length) {
+                // Extract points from live blog summary
+                liveBlogSummary.find('ul li').each((i, li) => {
+                    const text = $(li).text().trim();
                     if (text) {
                         paragraphs.push(text);
                     }
                 });
+            } else {
+                // Get regular article content if no live blog summary
+                const contentDiv = $('div.article-center-wrap-nf');
+                if (contentDiv.length) {
+                    // Find all paragraph elements
+                    contentDiv.find('p').each((i, p) => {
+                        const text = $(p).text().trim();
+                        if (text) {
+                            paragraphs.push(text);
+                        }
+                    });
+                }
             }
             
             // Get author information
@@ -232,7 +244,8 @@ class KhaleejTimesScraper {
                 author: author,
                 date: date,
                 url: absoluteUrl,
-                error: null
+                error: null,
+                is_live_blog: liveBlogSummary.length > 0
             };
             
         } catch (error) {
@@ -243,7 +256,8 @@ class KhaleejTimesScraper {
                 author: null,
                 date: null,
                 url: url,
-                error: error.message
+                error: error.message,
+                is_live_blog: false
             };
         }
     }
